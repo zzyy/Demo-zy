@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Demo_zy.iml" filepath="$PROJECT_DIR$/Demo_zy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" filepath="$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" />
+      <module fileurl="file://F:/workspace2/zyLauncher/zyLauncher.iml" filepath="F:/workspace2/zyLauncher/zyLauncher.iml" />
+    </modules>
+  </component>
+</project>
+
