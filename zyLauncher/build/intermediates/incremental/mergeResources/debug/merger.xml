@@ -2,39 +2,39 @@
 <merger version="2" >
 
     <dataSet config="main" >
-        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res" >
+        <source path="F:\Git\Demo-zy\zyLauncher\res" >
             <file
                 name="ic_launcher"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\drawable-hdpi\ic_launcher.png"
+                path="F:\Git\Demo-zy\zyLauncher\res\drawable-hdpi\ic_launcher.png"
                 qualifiers="hdpi-v4"
                 type="drawable" />
             <file
                 name="ic_launcher"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\drawable-mdpi\ic_launcher.png"
+                path="F:\Git\Demo-zy\zyLauncher\res\drawable-mdpi\ic_launcher.png"
                 qualifiers="mdpi-v4"
                 type="drawable" />
             <file
                 name="ic_launcher"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\drawable-xhdpi\ic_launcher.png"
+                path="F:\Git\Demo-zy\zyLauncher\res\drawable-xhdpi\ic_launcher.png"
                 qualifiers="xhdpi-v4"
                 type="drawable" />
             <file
                 name="ic_launcher"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\drawable-xxhdpi\ic_launcher.png"
+                path="F:\Git\Demo-zy\zyLauncher\res\drawable-xxhdpi\ic_launcher.png"
                 qualifiers="xxhdpi-v4"
                 type="drawable" />
             <file
                 name="activity_main"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\layout\activity_main.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\layout\activity_main.xml"
                 qualifiers=""
                 type="layout" />
             <file
                 name="main"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\menu\main.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\menu\main.xml"
                 qualifiers=""
                 type="menu" />
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\dimens.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values\dimens.xml"
                 qualifiers="" >
                 <dimen name="activity_horizontal_margin" >16dp
                 </dimen>
@@ -42,17 +42,18 @@
                 </dimen>
             </file>
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\strings.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values\strings.xml"
                 qualifiers="" >
                 <string name="action_settings" >Settings
                 </string>
                 <string name="app_name" >zyLauncher
                 </string>
+                <string name="app_filter_class" ></string>
                 <string name="hello_world" >Hello world!
                 </string>
             </file>
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\styles.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values\styles.xml"
                 qualifiers="" >
 
                 <style
@@ -74,7 +75,7 @@
                 </style>
             </file>
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values-v11\styles.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values-v11\styles.xml"
                 qualifiers="v11" >
 
                 <style
@@ -85,7 +86,7 @@
                 </style>
             </file>
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values-v14\styles.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values-v14\styles.xml"
                 qualifiers="v14" >
 
                 <style
@@ -96,17 +97,17 @@
                 </style>
             </file>
             <file
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values-w820dp\dimens.xml"
+                path="F:\Git\Demo-zy\zyLauncher\res\values-w820dp\dimens.xml"
                 qualifiers="w820dp-v13" >
                 <dimen name="activity_horizontal_margin" >64dp
                 </dimen>
             </file>
         </source>
-        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\build\generated\res\rs\debug" />
-        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\build\generated\res\generated\debug" />
+        <source path="F:\Git\Demo-zy\zyLauncher\build\generated\res\rs\debug" />
+        <source path="F:\Git\Demo-zy\zyLauncher\build\generated\res\generated\debug" />
     </dataSet>
     <dataSet config="debug" >
-        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\build-types\debug\res" />
+        <source path="F:\Git\Demo-zy\zyLauncher\build-types\debug\res" />
     </dataSet>
 
 </merger>

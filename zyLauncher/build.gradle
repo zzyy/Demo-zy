@@ -2,11 +2,11 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:0.12.+'
-    }
+//    dependencies {
+//        classpath 'com.android.tools.build:gradle:0.12.0'
+//    }
 }
-apply plugin: 'android'
+apply plugin: 'com.android.application'
 
 dependencies {
     compile fileTree(dir: 'libs', include: '*.jar')

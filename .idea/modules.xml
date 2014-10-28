@@ -2,8 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/Demo-zy.iml" filepath="$PROJECT_DIR$/Demo-zy.iml" />
       <module fileurl="file://$PROJECT_DIR$/Demo_zy.iml" filepath="$PROJECT_DIR$/Demo_zy.iml" />
       <module fileurl="file://$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" filepath="$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/zyLauncher/zyLauncher.iml" filepath="$PROJECT_DIR$/zyLauncher/zyLauncher.iml" />
       <module fileurl="file://F:/workspace2/zyLauncher/zyLauncher.iml" filepath="F:/workspace2/zyLauncher/zyLauncher.iml" />
     </modules>
   </component>
