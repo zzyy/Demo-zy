@@ -6,13 +6,6 @@
         <option name="distributionType" value="DEFAULT_WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleHome" value="F:/Android/gradle-2.1" />
-        <option name="modules">
-          <set>
-            <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/DrapAndDrop" />
-            <option value="$PROJECT_DIR$/zyLauncher" />
-          </set>
-        </option>
       </GradleProjectSettings>
     </option>
   </component>

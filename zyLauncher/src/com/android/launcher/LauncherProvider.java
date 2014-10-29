@@ -1,15 +1,25 @@
 package com.android.launcher;
 
 import android.content.ContentProvider;
+import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.provider.BaseColumns;
+import android.text.TextUtils;
+import android.util.Log;
+
+import java.util.List;
 
 /**
  * Created by Alex on 2014/10/28.
  */
 public class LauncherProvider extends ContentProvider{
-
+    private static final String TAG = "zy.LauncherProvider";
 
     public static final String AUTHORITY = "com.android.launcher.setting";
 
@@ -18,33 +28,246 @@ public class LauncherProvider extends ContentProvider{
     public static final String TABLE_WORKSPACE_SCREENS = "workspaceScreens";
     public static final String PARAMETER_NOTIFY = "notify";
 
-    @Override
-    public boolean onCreate() {
-        return false;
-    }
+    private static final String DATABASE_NAME = "launcher.db";
+    private static final int DATABASE_VERSION = 1;
+
+    private DatabaseHelper mOpenHelper;
 
     @Override
-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        return null;
+    public boolean onCreate() {
+        Log.d(TAG, "LauncherProvider onCreate");
+
+        final Context context = getContext();
+
+        mOpenHelper = new DatabaseHelper(context);
+        LauncherAppState.setLauncherProvider(this);
+
+        return true;
     }
 
     @Override
     public String getType(Uri uri) {
-        return null;
+        SqlArguments args = new SqlArguments(uri, null, null);
+        if (TextUtils.isEmpty(args.where)){
+            return "vnd.android.cursor.dir/" + args.table;
+        }else {
+            return "vnd.android.cursor.item/" + args.table;
+        }
+    }
+
+    @Override
+    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+        SqlArguments args = new SqlArguments(uri, selection, selectionArgs);
+        SQLiteQueryBuilder sqb = new SQLiteQueryBuilder();
+        sqb.setTables(args.table);
+
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        Cursor result = sqb.query(db, projection, args.where, args.args, null, null, sortOrder);
+        result.setNotificationUri(getContext().getContentResolver(), uri);
+        return result;
     }
 
     @Override
     public Uri insert(Uri uri, ContentValues values) {
-        return null;
+        SqlArguments args = new SqlArguments(uri);
+
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        addModifiedTime(values);
+
+        final long rowId = dbInsertAndCheck(mOpenHelper, db, args.table, null, values);
+        if (rowId <= 0){
+            return null;
+        }
+
+        uri = ContentUris.withAppendedId(uri, rowId);
+        sendNotify(uri);
+        return uri;
+    }
+
+    @Override
+    public int bulkInsert(Uri uri, ContentValues[] values) {
+
+        return super.bulkInsert(uri, values);
+    }
+
+    private void sendNotify(Uri uri) {
+        String notify = uri.getQueryParameter(PARAMETER_NOTIFY);
+        if (notify == null || "true".equals(notify)){
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        //fixme backup
+    }
+
+    private static long dbInsertAndCheck(DatabaseHelper helper, SQLiteDatabase db, String table, String nullColumnHack, ContentValues values) {
+        if (!values.containsKey(BaseColumns._ID)){
+            throw new RuntimeException("Error: attempting to add item w/o specify an id");
+        }
+        long result = db.insert(table, nullColumnHack, values);
+        return result;
+    }
+
+    private void addModifiedTime(ContentValues values) {
+        values.put(LauncherSettings.ChangeLogColumns.MODIFIED, System.currentTimeMillis());
     }
 
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-        return 0;
+        SqlArguments args = new SqlArguments(uri, selection, selectionArgs);
+
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        int count = db.delete(args.table, args.where, args.args);
+        if (count>0)
+            sendNotify(uri);
+        return count;
     }
 
     @Override
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        return 0;
+        SqlArguments args = new SqlArguments(uri, selection, selectionArgs);
+        addModifiedTime(values);
+
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        int count = db.update(args.table, values, args.where, args.args);
+        if (count>0)sendNotify(uri);
+
+        return count;
+    }
+
+    static class SqlArguments{
+        public final String table;
+        public final String where;
+        public final String[] args;
+
+        SqlArguments(Uri uri, String where, String[] args) {
+            final List<String> paths = uri.getPathSegments();
+            if (paths.size() ==1){
+                this.table = paths.get(0);
+                this.where = where;
+                this.args = args;
+            }else if (paths.size() != 2){
+                throw new IllegalArgumentException("Invalid URI: " + uri);
+            }else if (!TextUtils.isEmpty(where)){
+                throw new UnsupportedOperationException("where not support: " + uri)
+            }else {
+                this.table = paths.get(0);
+                this.where = "_id=" + ContentUris.parseId(uri);
+                this.args = args;
+            }
+        }
+
+        SqlArguments(Uri uri) {
+            if (uri.getPathSegments().size() == 1){
+                this.table = uri.getPathSegments().get(0);
+                this.where = null;
+                this.args = null;
+            }else {
+                throw new IllegalArgumentException("Invalid URI: " + uri);
+            }
+        }
+    }
+
+    private static class DatabaseHelper extends SQLiteOpenHelper{
+
+        private final Context mContext;
+
+        private long mMaxItemId = -1;
+        private long mMaxScreenid = -1;
+
+        DatabaseHelper(Context context){
+            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+            Log.d(TAG, "create DatabaseHelper");
+            mContext = context;
+            //fixme appwidget
+
+            if (mMaxItemId == -1){
+                mMaxItemId = initializeMaxItemId(getWritableDatabase());
+            }
+
+            if (mMaxScreenid == -1){
+                mMaxScreenid = initializeMaxScreenId(getWritableDatabase());
+            }
+        }
+
+        private long initializeMaxScreenId(SQLiteDatabase db) {
+            Cursor c = db.rawQuery("SELECT MAX(_id) FROM" + TABLE_WORKSPACE_SCREENS, null);
+            long id = -1;
+            if (c!=null && c.moveToNext()){
+                id = c.getLong(0);
+            }
+
+            if ( id == -1){
+                throw new RuntimeException("Error: could not query max screen id");
+            }
+
+            return id;
+        }
+
+        private long initializeMaxItemId(SQLiteDatabase db) {
+            Cursor c = db.rawQuery("SELECT MAX(_id) FROM" + LauncherProvider.TABLE_FAVOURITES, null);
+
+            final int index = 0;
+            long id = -1;
+            if(c !=null && c.moveToNext()){
+                id = c.getLong(index);
+            }
+
+            if (id == -1){
+                throw new RuntimeException("Error: could not query max item id from favorites");
+            }
+
+            return id;
+        }
+
+        @Override
+        public void onCreate(SQLiteDatabase db) {
+            Log.d(TAG, "create launcher database");
+
+            mMaxItemId = 1;
+            mMaxScreenid = 0;
+
+            db.execSQL("CREATE TABLE " + TABLE_FAVOURITES + "(" +
+                    LauncherSettings.Favourites._ID + " INTEGER PRIMARY KEY," +
+                    LauncherSettings.Favourites.TITLE + " TEXT," +
+                    LauncherSettings.Favourites.INTENT + " TEXT," +
+                    LauncherSettings.Favourites.CONTAINER + " INTEGER," +
+                    LauncherSettings.Favourites.SCREEN + " INTEGER," +
+                    LauncherSettings.Favourites.CELLX + " INTEGER," +
+                    LauncherSettings.Favourites.CELLY + " INTEGER," +
+                    LauncherSettings.Favourites.SPANX + " INTEGER," +
+                    LauncherSettings.Favourites.SPANY + " INTEGER," +
+                    LauncherSettings.Favourites.ITEM_TYPE + " INTEGER," +
+                    LauncherSettings.Favourites.APPWIDGET_ID + " INTEGER NOT NULL DEFAULT -1," +
+                    LauncherSettings.Favourites.IS_SHORTCUT + " INTEGER," +
+                    LauncherSettings.Favourites.ICON_TYPE + " INTEGER," +
+                    LauncherSettings.Favourites.ICON_PACKAGE + " TEXT," +
+                    LauncherSettings.Favourites.ICON_RESOURCE + " TEXT," +
+                    LauncherSettings.Favourites.ICON + " BLOB," +
+                    LauncherSettings.Favourites.URI + " TEXT," +
+                    LauncherSettings.Favourites.DISPLAY_MODE + " INTEGER," +
+                    LauncherSettings.Favourites.APPWIDGET_PROVIDER + " TEXT," +
+                    LauncherSettings.Favourites.MODIFIED + " INTEGER NOT NULL DEFAULT -1," +
+                    ");");
+            addWorkspacesTable(db);
+
+            //fixme wipe previous widget
+
+            //fixme try to converting old database
+
+//TBD
+        }
+
+        private void addWorkspacesTable(SQLiteDatabase db) {
+            db.execSQL("CREATE TABLE " + TABLE_WORKSPACE_SCREENS + " (" +
+                    LauncherSettings.WorkspaceScreens._ID + " INTEGER," +
+                    LauncherSettings.WorkspaceScreens.SCREEN_RANK + " INTEGER," +
+                    LauncherSettings.ChangeLogColumns.MODIFIED + " INTEGER NOT NULL DEFAULT 0" +
+                    ");");
+        }
+
+        @Override
+        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+        }
     }
 }

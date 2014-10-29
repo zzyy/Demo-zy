@@ -2,10 +2,10 @@
 <merger version="2" >
 
     <dataSet config="main" >
-        <source path="F:\Git\Demo-zy\zyLauncher\assets" />
+        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\assets" />
     </dataSet>
     <dataSet config="debug" >
-        <source path="F:\Git\Demo-zy\zyLauncher\build-types\debug\assets" />
+        <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\build-types\debug\assets" />
     </dataSet>
 
 </merger>

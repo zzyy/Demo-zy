@@ -10,6 +10,8 @@ import android.os.Handler;
 import android.util.Log;
 import com.example.zylauncher.R;
 
+import java.lang.ref.WeakReference;
+
 /**
  * Created by Administrator on 2014/10/24.
  */
@@ -17,6 +19,7 @@ public class LauncherAppState {
     private static String TAG = "zy.LauncherAppState";
 
     private static LauncherAppState INSTANCE;
+    private static WeakReference<LauncherProvider> sLauncherProvider;
     private static Context sContext;
     private final AppFilter mAppFilter;
     private final LancherModel mModel;
@@ -86,5 +89,9 @@ public class LauncherAppState {
 
     public Context getContext() {
         return sContext;
+    }
+
+    public static void setLauncherProvider(LauncherProvider launcherProvider) {
+        sLauncherProvider = new WeakReference<LauncherProvider>(launcherProvider);
     }
 }
