@@ -18,6 +18,7 @@ import java.lang.ref.WeakReference;
 public class LauncherAppState {
     private static String TAG = "zy.LauncherAppState";
 
+    private static final String SHARED_PREFERENCES_KEY = "com.android.launcher.prefs";
     private static LauncherAppState INSTANCE;
     private static WeakReference<LauncherProvider> sLauncherProvider;
     private static Context sContext;
@@ -73,22 +74,34 @@ public class LauncherAppState {
         filter.addAction(SearchManager.INTENT_ACTION_SEARCHABLES_CHANGED);
         sContext.registerReceiver(mModel, filter);
 
+        //observes the favorites table
         ContentResolver resolver = sContext.getContentResolver();
-        resolver.registerContentObserver(, true, mFavoritesObserver);
+        resolver.registerContentObserver(LauncherSettings.Favourites.CONTENT_URI, true, mFavoritesObserver);
 
-        //TBD
     }
 
     private final ContentObserver mFavoritesObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
-            //TBD
+            Log.d(TAG, "mFavoritesObserver onChange: selfChange=" + selfChange);
 
+            // If the database has ever changed, then we really need to force a reload of the
+            // workspace on the next load
+            mModel.resetLoadedState(false, true);
+            mModel.startLoaderFromBackground();
         }
     };
 
+    public static String getSharedPreferencesKey() {
+        return SHARED_PREFERENCES_KEY;
+    }
+
     public Context getContext() {
         return sContext;
+    }
+
+    public static LauncherProvider getLauncherProvider() {
+        return sLauncherProvider.get();
     }
 
     public static void setLauncherProvider(LauncherProvider launcherProvider) {

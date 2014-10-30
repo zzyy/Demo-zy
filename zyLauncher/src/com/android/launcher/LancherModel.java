@@ -1,22 +1,24 @@
 package com.android.launcher;
 
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
+import android.appwidget.AppWidgetManager;
+import android.content.*;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.*;
+import android.os.Process;
 import android.text.TextUtils;
 import android.util.Log;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Objects;
 
 public class LancherModel extends BroadcastReceiver {
     private static  String TAG = "zy.LancherModel";
+
+    private final Object mLock = new Object();
 
     private final boolean mAppsCanBeOnRemoveableStorage;
     private final LauncherAppState mApp;
@@ -30,11 +32,108 @@ public class LancherModel extends BroadcastReceiver {
     }
     private static final Handler sWorker = new Handler(sWorkerThread.getLooper());
 
-    private WeakReference<Callbacks> mCallbacks;
-    public interface Callbacks{
-        //TBD
+    private LoaderTask mLoaderTask;
+    private boolean mIsLoaderTaskRunning;
+
+    private boolean mAllAppsLoaded;
+    private boolean mWorkspaceLoaded;
+
+    /**
+     * the thread used to load the contents of the launcher
+     *   -workspace icon
+     *   -widgets
+     *   -all apps icon
+     */
+    private class LoaderTask implements Runnable{
+        private Context mContext;
+        /** The Launcher app is launching or have launched */
+        private boolean mIsLaunching;
+        private boolean mIsLoadingAndBindingWorkspace;
+        private boolean mStopped;
+        private boolean mLoadAndBindStepFinish;
+
+        private HashMap<Objects, CharSequence> mLabelCache;
+
+        private LoaderTask(Context mContext ,boolean mIsLaunching) {
+            this.mIsLaunching = mIsLaunching;
+            this.mContext = mContext;
+
+            mLabelCache = new HashMap<Objects, CharSequence>();
+        }
+
+        @Override
+        public void run() {
+            boolean isUpgrade =false;
+
+            synchronized (mLock){
+                mIsLoaderTaskRunning = true;
+            }
+
+            keep_running:{
+                // Elevate priority when Home launches for the first time to avoid
+                // starving at boot time. Staring at a blank home is not cool.
+                synchronized (mLock){
+                    Process.setThreadPriority(mIsLaunching ? Process.THREAD_PRIORITY_DEFAULT : Process.THREAD_PRIORITY_BACKGROUND);
+                }
+
+                isUpgrade = loadAndBindWorkspace();
+//TBD
+            }
+
+                //TBD
+        }
+
+        /** returns whether this is an upgrade path */
+        private boolean loadAndBindWorkspace() {
+            mIsLoadingAndBindingWorkspace = true;
+
+            boolean isUpgradePath = false;
+            if(!mWorkspaceLoaded){
+                isUpgradePath = loadWorkspace();
+                synchronized (LoaderTask.this){
+                    if (mStopped){
+                        return isUpgradePath;
+                    }
+                    mWorkspaceLoaded = true;
+                }
+            }
+//TBD
+            return isUpgradePath;
+        }
+
+        private boolean loadWorkspace() {
+            final Context context = mContext;
+            final ContentResolver contentResolver = context.getContentResolver();
+            final PackageManager packageManager = context.getPackageManager();
+            final AppWidgetManager widgets = AppWidgetManager.getInstance(context);
+            final boolean isSafeMode = packageManager.isSafeMode();
+
+            LauncherAppState app = LauncherAppState.getInstance();
+
+            DeviceProfile grid = app.getDynamicGrid().getDeviceProfile();
+            int countX = (int) grid.numColumns;
+            int countY = (int) grid.numRows;
+
+            LauncherAppState.getLauncherProvider().loadDefaultFavoritesIfNecessary(0);
+
+
+            //TBD
+        }
+
+        public boolean isLaunching() {
+            return mIsLaunching;
+        }
+        public boolean isLoadingWorkspace() {
+            return mIsLoadingAndBindingWorkspace;
+        }
     }
 
+    private WeakReference<Callbacks> mCallbacks;
+
+    public interface Callbacks{
+        //TBD
+
+    }
 
     public LancherModel(LauncherAppState app, IconCache iconCache, AppFilter appFilter){
         Context context = app.getContext();
@@ -46,6 +145,25 @@ public class LancherModel extends BroadcastReceiver {
         mBgAllAppsList = new AllAppsList(iconCache, appFilter);
 
         mDefaultIcon = Utilities.creatIconBitmap( iconCache.getFullResDefaultActivityIcon(), context);
+    }
+
+
+    public void resetLoadedState(boolean resetAllAppsLoaded, boolean resetWorkspaceLoaded) {
+        synchronized (mLock){
+            
+            // Stop any existing loaders first, so they don't set mAllAppsLoaded or
+            // mWorkspaceLoaded to true later
+            stopLoaderLocked();
+            if (resetAllAppsLoaded) mAllAppsLoaded = false;
+            if (resetWorkspaceLoaded) mWorkspaceLoaded = false;
+        }
+    }
+
+    private boolean stopLoaderLocked() {
+        boolean isLaunching  = false;
+        //TBD
+
+        return isLaunching;
     }
 
     @Override

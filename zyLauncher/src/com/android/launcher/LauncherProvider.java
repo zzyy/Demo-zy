@@ -1,9 +1,9 @@
 package com.android.launcher;
 
-import android.content.ContentProvider;
-import android.content.ContentUris;
-import android.content.ContentValues;
-import android.content.Context;
+import android.content.*;
+import android.content.pm.PackageManager;
+import android.content.res.TypedArray;
+import android.content.res.XmlResourceParser;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -11,8 +11,14 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
+import android.util.AttributeSet;
 import android.util.Log;
+import android.util.Xml;
+import com.example.zylauncher.R;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -23,6 +29,16 @@ public class LauncherProvider extends ContentProvider{
 
     public static final String AUTHORITY = "com.android.launcher.setting";
 
+    //default_workspace.xml tags.
+    private static final String TAG_FAVORITES = "favorites";
+    private static final String TAG_FAVORITE = "favorite";
+    private static final String TAG_CLOCK = "clock";
+    private static final String TAG_SEARCH = "search";
+    private static final String TAG_APPWIDGET = "appwidget";
+    private static final String TAG_SHORTCUT = "shortcut";
+    private static final String TAG_FOLDER = "folder";
+    private static final String TAG_EXTRA = "extra";
+    private static final String TAG_INCLUDE = "include";
 
     public static String TABLE_FAVOURITES = "favorites";
     public static final String TABLE_WORKSPACE_SCREENS = "workspaceScreens";
@@ -32,6 +48,8 @@ public class LauncherProvider extends ContentProvider{
     private static final int DATABASE_VERSION = 1;
 
     private DatabaseHelper mOpenHelper;
+    static final String EMPTY_DATABASE_CREATED = "EMPTY_DATABASE_CREATED";
+    static final String DEFAULT_WORKSPACE_RESOURCE_ID = "DEFAULT_WORKSPACE_RESOURCE_ID";
 
     @Override
     public boolean onCreate() {
@@ -86,8 +104,25 @@ public class LauncherProvider extends ContentProvider{
 
     @Override
     public int bulkInsert(Uri uri, ContentValues[] values) {
+        SqlArguments args = new SqlArguments(uri);
+        SQLiteDatabase db  = mOpenHelper.getWritableDatabase();
 
-        return super.bulkInsert(uri, values);
+        db.beginTransaction();
+        try {
+            int valueNum = values.length;
+            for (int i=0; i<valueNum; i++){
+                addModifiedTime(values[i]);
+                long rowId = dbInsertAndCheck(mOpenHelper, db, args.table, null, values[i]);
+                if (rowId < 0){
+                    return 0;
+                }
+            }
+        }finally {
+            db.endTransaction();
+        }
+
+        sendNotify(uri);
+        return values.length;
     }
 
     private void sendNotify(Uri uri) {
@@ -134,6 +169,29 @@ public class LauncherProvider extends ContentProvider{
         return count;
     }
 
+    synchronized public void loadDefaultFavoritesIfNecessary(int orgiWorkspaceResId) {
+        String spksy = LauncherAppState.getSharedPreferencesKey();
+        SharedPreferences sp = getContext().getSharedPreferences(spksy, Context.MODE_PRIVATE);
+
+        if (sp.getBoolean(EMPTY_DATABASE_CREATED, false)){
+            int workspaceResId = orgiWorkspaceResId;
+
+            //use default workspace resource if not provided
+            if (workspaceResId == 0){
+                workspaceResId = sp.getInt(DEFAULT_WORKSPACE_RESOURCE_ID, R.xml.default_workspace);
+            }
+
+            SharedPreferences.Editor editor = sp.edit();
+            editor.remove(EMPTY_DATABASE_CREATED);
+            if (orgiWorkspaceResId != 0 ){
+                editor.putInt(DEFAULT_WORKSPACE_RESOURCE_ID, orgiWorkspaceResId);
+            }
+
+            mOpenHelper.loadFavorites(mOpenHelper.getWritableDatabase(), workspaceResId);
+            //TBD
+        }
+    }
+
     static class SqlArguments{
         public final String table;
         public final String where;
@@ -148,7 +206,7 @@ public class LauncherProvider extends ContentProvider{
             }else if (paths.size() != 2){
                 throw new IllegalArgumentException("Invalid URI: " + uri);
             }else if (!TextUtils.isEmpty(where)){
-                throw new UnsupportedOperationException("where not support: " + uri)
+                throw new UnsupportedOperationException("where not support: " + uri);
             }else {
                 this.table = paths.get(0);
                 this.where = "_id=" + ContentUris.parseId(uri);
@@ -267,7 +325,83 @@ public class LauncherProvider extends ContentProvider{
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+//TBD
+        }
 
+        /** Loads default set favorites from an xml(default_workspace.xml) */
+        public int loadFavorites(SQLiteDatabase db, int workspaceResId) {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_LAUNCHER);
+            ContentValues values = new ContentValues();
+
+            PackageManager packageManager = mContext.getPackageManager();
+            int i = 0;
+            XmlResourceParser parser = mContext.getResources().getXml(workspaceResId);
+            AttributeSet attrs = Xml.asAttributeSet(parser);
+            try {
+                beginDocument(parser, TAG_FAVORITES);
+
+                final int depth = parser.getDepth();
+                int type;
+                while ((type = parser.next()) != XmlPullParser.END_TAG ||
+                        parser.getDepth() > depth && type != XmlPullParser.END_DOCUMENT){
+                    if (type != XmlPullParser.START_TAG){
+                        continue;
+                    }
+
+                    boolean added =false;
+                    final String name = parser.getName();
+
+                    //the tag is <Include>
+                    if (TAG_INCLUDE.equals(name)){
+                        TypedArray a = mContext.obtainStyledAttributes(attrs, R.styleable.Include);
+                        final int resId = a.getResourceId(R.styleable.Include_workspace, 0);
+
+                        if (resId!=0 && resId != workspaceResId){
+                            i += loadFavorites(db, resId);
+                            added = false;
+                            mMaxItemId = -1;
+                        }else {
+                            //fixme
+                        }
+
+                        a.recycle();
+                        continue;
+                    }
+
+                    TypedArray a = mContext.obtainStyledAttributes(attrs, R.styleable.Favorite);
+
+                    long container = LauncherSettings.Favourites.CONTAINER_DESKTOP;
+                    if (a.hasValue(R.styleable.Favorite_container)){
+                        container = Long.valueOf(a.getString(R.styleable.Favorite_container));
+                    }
+                    String screen = a.getString(R.styleable.Favorite_screen);
+                    String x = a.getString(R.styleable.Favorite_x);
+
+                    //TBD
+
+
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (XmlPullParserException e) {
+                e.printStackTrace();
+            }
+
+            //TBD
+        }
+
+        private static final void beginDocument(XmlResourceParser parser, String firstElementName) throws IOException, XmlPullParserException {
+            int type;
+            while ((type = parser.next()) != XmlPullParser.START_TAG && type != XmlPullParser.END_DOCUMENT);
+
+            if (type != XmlPullParser.START_TAG)
+                throw new XmlPullParserException("No start tag found");
+
+            if (!parser.getName().equals(firstElementName)){
+                throw new XmlPullParserException("Unexpected start tag, Actual: " + parser.getName() + ", Expected: "+ firstElementName);
+            }
         }
     }
 }

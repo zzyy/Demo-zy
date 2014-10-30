@@ -64,7 +64,15 @@ public class LauncherSettings {
                 + "/" + LauncherProvider.TABLE_FAVOURITES
                 + "?" + LauncherProvider.PARAMETER_NOTIFY + "=true");
 
+        static final Uri CONTENT_URI_NO_NOTIFICATION = Uri.parse("content://" + LauncherProvider.AUTHORITY
+                + "/" + LauncherProvider.TABLE_FAVOURITES
+                + "?" + LauncherProvider.PARAMETER_NOTIFY + "=false");
 
+        static Uri getContentUri(long id, boolean notify){
+            return Uri.parse("content://" + LauncherProvider.AUTHORITY
+                    + "/" + LauncherProvider.TABLE_FAVOURITES + "/" + id
+                    + "?" + LauncherProvider.PARAMETER_NOTIFY + "=" + notify);
+        }
 
         static final String CONTAINER = "container";
 
