@@ -74,6 +74,7 @@ public class LauncherSettings {
                     + "?" + LauncherProvider.PARAMETER_NOTIFY + "=" + notify);
         }
 
+        //决定图标位置, 是在 Hotseat还是在workspace
         static final String CONTAINER = "container";
 
         static final int CONTAINER_DESKTOP = -100;
@@ -83,6 +84,7 @@ public class LauncherSettings {
         static final String CELLX = "cellX";
         static final String CELLY = "cellY";
 
+        /** 图标所占位置大小, appwidget所占区域 */
         static final String SPANX = "spanX";
         static final String SPANY = "spanY";
 

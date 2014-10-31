@@ -1,6 +1,7 @@
 package com.android.launcher;
 
 import android.content.*;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
@@ -19,6 +20,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -350,6 +352,7 @@ public class LauncherProvider extends ContentProvider{
                     }
 
                     boolean added =false;
+                    //标签名
                     final String name = parser.getName();
 
                     //the tag is <Include>
@@ -377,6 +380,56 @@ public class LauncherProvider extends ContentProvider{
                     }
                     String screen = a.getString(R.styleable.Favorite_screen);
                     String x = a.getString(R.styleable.Favorite_x);
+                    String y = a.getString(R.styleable.Favorite_y);
+
+                    values.clear();
+                    values.put(LauncherSettings.Favourites.CONTAINER, container);
+                    values.put(LauncherSettings.Favourites.SCREEN, screen);
+                    values.put(LauncherSettings.Favourites.CELLX, x);
+                    values.put(LauncherSettings.Favourites.CELLY, y);
+
+                    if (TAG_FAVORITE.equals(name)){
+                        long id = addAppsShortcut(db, values, a, packageManager, intent);
+                        added = id>=0;
+                    }else if (TAG_SEARCH.equals(name)){
+
+                    }else if (TAG_CLOCK.equals(name)){
+
+                    }else if (TAG_APPWIDGET.equals(name)){
+
+                    }else if (TAG_SHORTCUT.equals(name)){
+
+                    }else if (TAG_FOLDER.equals(name)){
+                        String title;
+                        int titleResId = a.getResourceId(R.styleable.Favorite_title, -1);
+                        if (titleResId != -1){
+                            title = mContext.getResources().getString(titleResId);
+                        }else {
+                            title = mContext.getResources().getString(R.string.folder_name);
+                        }
+                        values.put(LauncherSettings.Favourites.TITLE, title);
+                        long folderId = addFolder(db, values);
+                        added = folderId >= 0;
+
+                        ArrayList<Long> folderItems = new ArrayList<Long>();
+
+                        int folderDepth = parser.getDepth();
+                        while ((type = parser.next()) != XmlPullParser.END_TAG || parser.getDepth() > folderDepth){
+                            if (type != XmlPullParser.START_TAG){
+                                continue;
+                            }
+                            final String folder_item_name = parser.getName();
+
+                            values.clear();
+                            values.put(LauncherSettings.Favourites.CONTAINER, folderId);
+
+                            if (TAG_FAVORITE.equals(folder_item_name) && folderId >= 0){
+                                //TBD
+                            }
+
+                        }
+
+                    }
 
                     //TBD
 
@@ -392,6 +445,66 @@ public class LauncherProvider extends ContentProvider{
             //TBD
         }
 
+        private long addFolder(SQLiteDatabase db, ContentValues values) {
+            values.put(LauncherSettings.Favourites.ITEM_TYPE, LauncherSettings.Favourites.ITEM_TYPE_FOLDER);
+            values.put(LauncherSettings.Favourites.SPANX, 1);
+            values.put(LauncherSettings.Favourites.SPANY, 1);
+            long id = generateNewItemId();
+            values.put(LauncherSettings.Favourites._ID, id);
+            if (dbInsertAndCheck(this, db, TABLE_FAVOURITES, null, values) <=0 ){
+                return -1;
+            }else {
+                return id;
+            }
+        }
+
+        private long addAppsShortcut(SQLiteDatabase db, ContentValues values, TypedArray a, PackageManager packageManager, Intent intent) {
+            long id = -1;
+            ActivityInfo info;
+            String packageName = a.getString(R.styleable.Favorite_packageName);
+            String className = a.getString(R.styleable.Favorite_className);
+
+            try {
+                ComponentName cn;
+                cn = new ComponentName(packageName, className);
+                try {
+                    info = packageManager.getActivityInfo(cn, 0);
+                } catch (PackageManager.NameNotFoundException e) {
+                    String[] packages = packageManager.currentToCanonicalPackageNames(new String[]{packageName});
+                    cn = new ComponentName(packages[0], className);
+                    info = packageManager.getActivityInfo(cn, 0);
+                }
+                id = generateNewItemId();
+                intent.setComponent(cn);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+
+                values.put(LauncherSettings.Favourites.INTENT, intent.toUri(0));
+                values.put(LauncherSettings.Favourites.TITLE, info.loadLabel(packageManager).toString());
+                values.put(LauncherSettings.Favourites.ITEM_TYPE, LauncherSettings.Favourites.ITEM_TYPE_APPLICATION);
+                values.put(LauncherSettings.Favourites.SPANX, 1);
+                values.put(LauncherSettings.Favourites.SPANY, 1);
+//                values.put(LauncherSettings.Favourites._ID, generateNewItemId());
+                values.put(LauncherSettings.Favourites._ID, id);
+
+                if (dbInsertAndCheck(this, db, TABLE_FAVOURITES, null, values) < 0){
+                    return -1;
+                }
+            } catch (PackageManager.NameNotFoundException e) {
+
+            }
+
+            return id;
+        }
+
+        private long generateNewItemId() {
+            if (mMaxItemId < 0){
+                throw new RuntimeException("Error: mMaxItemId was not initialize");
+            }
+            mMaxItemId += 1;
+            return mMaxItemId;
+        }
+
+        //检测xml文档是否以 firstElementName 开始
         private static final void beginDocument(XmlResourceParser parser, String firstElementName) throws IOException, XmlPullParserException {
             int type;
             while ((type = parser.next()) != XmlPullParser.START_TAG && type != XmlPullParser.END_DOCUMENT);
