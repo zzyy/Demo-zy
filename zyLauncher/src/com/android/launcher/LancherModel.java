@@ -210,7 +210,17 @@ public class LancherModel extends BroadcastReceiver {
                 return false;
             }
 
-            PackageInfo packageInfo = packageManager.getPackageInfo(componentName, 0)
+            try {
+                PackageInfo packageInfo = packageManager.getPackageInfo(componentName.getPackageName(), 0);
+                if (!packageInfo.applicationInfo.enabled){
+                    return false;
+                }
+
+                return packageManager.getActivityInfo(componentName, 0) != null;
+
+            } catch (PackageManager.NameNotFoundException e) {
+                return false
+            }
 
         }
 
