@@ -76,7 +76,7 @@ public class LauncherAppState {
 
         //observes the favorites table
         ContentResolver resolver = sContext.getContentResolver();
-        resolver.registerContentObserver(LauncherSettings.Favourites.CONTENT_URI, true, mFavoritesObserver);
+        resolver.registerContentObserver(LauncherSettings.Favorites.CONTENT_URI, true, mFavoritesObserver);
 
     }
 

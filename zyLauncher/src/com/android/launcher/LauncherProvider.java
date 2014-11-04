@@ -3,6 +3,7 @@ package com.android.launcher;
 import android.content.*;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
 import android.database.Cursor;
@@ -20,6 +21,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -190,7 +192,9 @@ public class LauncherProvider extends ContentProvider{
             }
 
             mOpenHelper.loadFavorites(mOpenHelper.getWritableDatabase(), workspaceResId);
-            //TBD
+            //fixme load old db
+
+            editor.commit();
         }
     }
 
@@ -287,26 +291,26 @@ public class LauncherProvider extends ContentProvider{
             mMaxScreenid = 0;
 
             db.execSQL("CREATE TABLE " + TABLE_FAVOURITES + "(" +
-                    LauncherSettings.Favourites._ID + " INTEGER PRIMARY KEY," +
-                    LauncherSettings.Favourites.TITLE + " TEXT," +
-                    LauncherSettings.Favourites.INTENT + " TEXT," +
-                    LauncherSettings.Favourites.CONTAINER + " INTEGER," +
-                    LauncherSettings.Favourites.SCREEN + " INTEGER," +
-                    LauncherSettings.Favourites.CELLX + " INTEGER," +
-                    LauncherSettings.Favourites.CELLY + " INTEGER," +
-                    LauncherSettings.Favourites.SPANX + " INTEGER," +
-                    LauncherSettings.Favourites.SPANY + " INTEGER," +
-                    LauncherSettings.Favourites.ITEM_TYPE + " INTEGER," +
-                    LauncherSettings.Favourites.APPWIDGET_ID + " INTEGER NOT NULL DEFAULT -1," +
-                    LauncherSettings.Favourites.IS_SHORTCUT + " INTEGER," +
-                    LauncherSettings.Favourites.ICON_TYPE + " INTEGER," +
-                    LauncherSettings.Favourites.ICON_PACKAGE + " TEXT," +
-                    LauncherSettings.Favourites.ICON_RESOURCE + " TEXT," +
-                    LauncherSettings.Favourites.ICON + " BLOB," +
-                    LauncherSettings.Favourites.URI + " TEXT," +
-                    LauncherSettings.Favourites.DISPLAY_MODE + " INTEGER," +
-                    LauncherSettings.Favourites.APPWIDGET_PROVIDER + " TEXT," +
-                    LauncherSettings.Favourites.MODIFIED + " INTEGER NOT NULL DEFAULT -1," +
+                    LauncherSettings.Favorites._ID + " INTEGER PRIMARY KEY," +
+                    LauncherSettings.Favorites.TITLE + " TEXT," +
+                    LauncherSettings.Favorites.INTENT + " TEXT," +
+                    LauncherSettings.Favorites.CONTAINER + " INTEGER," +
+                    LauncherSettings.Favorites.SCREEN + " INTEGER," +
+                    LauncherSettings.Favorites.CELLX + " INTEGER," +
+                    LauncherSettings.Favorites.CELLY + " INTEGER," +
+                    LauncherSettings.Favorites.SPANX + " INTEGER," +
+                    LauncherSettings.Favorites.SPANY + " INTEGER," +
+                    LauncherSettings.Favorites.ITEM_TYPE + " INTEGER," +
+                    LauncherSettings.Favorites.APPWIDGET_ID + " INTEGER NOT NULL DEFAULT -1," +
+                    LauncherSettings.Favorites.IS_SHORTCUT + " INTEGER," +
+                    LauncherSettings.Favorites.ICON_TYPE + " INTEGER," +
+                    LauncherSettings.Favorites.ICON_PACKAGE + " TEXT," +
+                    LauncherSettings.Favorites.ICON_RESOURCE + " TEXT," +
+                    LauncherSettings.Favorites.ICON + " BLOB," +
+                    LauncherSettings.Favorites.URI + " TEXT," +
+                    LauncherSettings.Favorites.DISPLAY_MODE + " INTEGER," +
+                    LauncherSettings.Favorites.APPWIDGET_PROVIDER + " TEXT," +
+                    LauncherSettings.Favorites.MODIFIED + " INTEGER NOT NULL DEFAULT -1," +
                     ");");
             addWorkspacesTable(db);
 
@@ -374,7 +378,7 @@ public class LauncherProvider extends ContentProvider{
 
                     TypedArray a = mContext.obtainStyledAttributes(attrs, R.styleable.Favorite);
 
-                    long container = LauncherSettings.Favourites.CONTAINER_DESKTOP;
+                    long container = LauncherSettings.Favorites.CONTAINER_DESKTOP;
                     if (a.hasValue(R.styleable.Favorite_container)){
                         container = Long.valueOf(a.getString(R.styleable.Favorite_container));
                     }
@@ -383,10 +387,10 @@ public class LauncherProvider extends ContentProvider{
                     String y = a.getString(R.styleable.Favorite_y);
 
                     values.clear();
-                    values.put(LauncherSettings.Favourites.CONTAINER, container);
-                    values.put(LauncherSettings.Favourites.SCREEN, screen);
-                    values.put(LauncherSettings.Favourites.CELLX, x);
-                    values.put(LauncherSettings.Favourites.CELLY, y);
+                    values.put(LauncherSettings.Favorites.CONTAINER, container);
+                    values.put(LauncherSettings.Favorites.SCREEN, screen);
+                    values.put(LauncherSettings.Favorites.CELLX, x);
+                    values.put(LauncherSettings.Favorites.CELLY, y);
 
                     if (TAG_FAVORITE.equals(name)){
                         long id = addAppsShortcut(db, values, a, packageManager, intent);
@@ -407,7 +411,7 @@ public class LauncherProvider extends ContentProvider{
                         }else {
                             title = mContext.getResources().getString(R.string.folder_name);
                         }
-                        values.put(LauncherSettings.Favourites.TITLE, title);
+                        values.put(LauncherSettings.Favorites.TITLE, title);
                         long folderId = addFolder(db, values);
                         added = folderId >= 0;
 
@@ -421,36 +425,59 @@ public class LauncherProvider extends ContentProvider{
                             final String folder_item_name = parser.getName();
 
                             values.clear();
-                            values.put(LauncherSettings.Favourites.CONTAINER, folderId);
+                            values.put(LauncherSettings.Favorites.CONTAINER, folderId);
 
                             if (TAG_FAVORITE.equals(folder_item_name) && folderId >= 0){
-                                //TBD
+                                long id = addAppsShortcut(db, values, a, packageManager, intent);
+                                if (id >0){
+                                    folderItems.add(id);
+                                }
+                            } else if (TAG_SHORTCUT.equals(folder_item_name) && folderId >=0 ){
+                                long id = addUriShortcut(db, values, a);
+                                if (id >0 ){
+                                    folderItems.add(id);
+                                }
+                            }else {
+                                throw new RuntimeException("folder can contain only shortcut");
                             }
-
+//                            a.recycle();
                         }
 
+                        // We can only have folders with >= 2 items, so we need to remove the
+                        // folder and clean up if less than 2 items were included, or some
+                        // failed to add, and less than 2 were actually added
+                        if (folderItems.size() < 2 && folderId >= 0){
+                            deleteId(db, folderId);
+                            if (folderItems.size() > 0){
+                                deleteId(db, folderItems.get(0));
+                            }
+                                added = false;
+                        }
                     }
 
-                    //TBD
-
-
+                    if (added) i++;
+                    a.recycle();
                 }
-
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (XmlPullParserException e) {
                 e.printStackTrace();
             }
 
-            //TBD
+            // Update the max item id after we have loaded the database
+            if (mMaxItemId == -1){
+                mMaxItemId = initializeMaxItemId(db);
+            }
+
+            return i;
         }
 
         private long addFolder(SQLiteDatabase db, ContentValues values) {
-            values.put(LauncherSettings.Favourites.ITEM_TYPE, LauncherSettings.Favourites.ITEM_TYPE_FOLDER);
-            values.put(LauncherSettings.Favourites.SPANX, 1);
-            values.put(LauncherSettings.Favourites.SPANY, 1);
+            values.put(LauncherSettings.Favorites.ITEM_TYPE, LauncherSettings.Favorites.ITEM_TYPE_FOLDER);
+            values.put(LauncherSettings.Favorites.SPANX, 1);
+            values.put(LauncherSettings.Favorites.SPANY, 1);
             long id = generateNewItemId();
-            values.put(LauncherSettings.Favourites._ID, id);
+            values.put(LauncherSettings.Favorites._ID, id);
             if (dbInsertAndCheck(this, db, TABLE_FAVOURITES, null, values) <=0 ){
                 return -1;
             }else {
@@ -458,7 +485,53 @@ public class LauncherProvider extends ContentProvider{
             }
         }
 
+        private void deleteId(SQLiteDatabase db, long id) {
+            Uri uri = LauncherSettings.Favorites.getContentUri(id, false);
+            SqlArguments args = new SqlArguments(uri, null, null);
+            db.delete(TABLE_FAVOURITES, args.where, args.args);
+        }
+
+        private long addUriShortcut(SQLiteDatabase db, ContentValues values, TypedArray a) {
+            Resources resources = mContext.getResources();
+
+            final int iconResId = a.getInt(R.styleable.Favorite_icon, 0);
+            final int titleResId = a.getInt(R.styleable.Favorite_title, 0);
+
+            Intent intent;
+            String uri = null;
+
+            try {
+                uri = a.getString(R.styleable.Favorite_uri);
+                intent = Intent.parseUri(uri, 0);
+            } catch (URISyntaxException e) {
+                return -1;
+            }
+
+            if (iconResId == 0 || titleResId ==0){
+                return  -1;
+            }
+
+            long id = generateNewItemId();
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            values.put(LauncherSettings.Favorites.INTENT, intent.toUri(0));
+            values.put(LauncherSettings.Favorites.TITLE, resources.getString(titleResId));
+            values.put(LauncherSettings.Favorites.ITEM_TYPE, LauncherSettings.Favorites.ITEM_TYPE_SHORTCUT);
+            values.put(LauncherSettings.Favorites.SPANX, 1);
+            values.put(LauncherSettings.Favorites.SPANY, 1);
+            values.put(LauncherSettings.Favorites.ICON_TYPE, LauncherSettings.Favorites.ICON_TYPE_RESOURCE);
+            values.put(LauncherSettings.Favorites.ICON_PACKAGE, mContext.getPackageName());
+            values.put(LauncherSettings.Favorites.ICON_RESOURCE, iconResId);
+            values.put(LauncherSettings.Favorites._ID, id);
+
+            if (dbInsertAndCheck(this, db, TABLE_FAVOURITES, null, values) < 0){
+                return -1;
+            }
+
+            return id;
+        }
+
         private long addAppsShortcut(SQLiteDatabase db, ContentValues values, TypedArray a, PackageManager packageManager, Intent intent) {
+
             long id = -1;
             ActivityInfo info;
             String packageName = a.getString(R.styleable.Favorite_packageName);
@@ -478,13 +551,13 @@ public class LauncherProvider extends ContentProvider{
                 intent.setComponent(cn);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
 
-                values.put(LauncherSettings.Favourites.INTENT, intent.toUri(0));
-                values.put(LauncherSettings.Favourites.TITLE, info.loadLabel(packageManager).toString());
-                values.put(LauncherSettings.Favourites.ITEM_TYPE, LauncherSettings.Favourites.ITEM_TYPE_APPLICATION);
-                values.put(LauncherSettings.Favourites.SPANX, 1);
-                values.put(LauncherSettings.Favourites.SPANY, 1);
+                values.put(LauncherSettings.Favorites.INTENT, intent.toUri(0));
+                values.put(LauncherSettings.Favorites.TITLE, info.loadLabel(packageManager).toString());
+                values.put(LauncherSettings.Favorites.ITEM_TYPE, LauncherSettings.Favorites.ITEM_TYPE_APPLICATION);
+                values.put(LauncherSettings.Favorites.SPANX, 1);
+                values.put(LauncherSettings.Favorites.SPANY, 1);
 //                values.put(LauncherSettings.Favourites._ID, generateNewItemId());
-                values.put(LauncherSettings.Favourites._ID, id);
+                values.put(LauncherSettings.Favorites._ID, id);
 
                 if (dbInsertAndCheck(this, db, TABLE_FAVOURITES, null, values) < 0){
                     return -1;

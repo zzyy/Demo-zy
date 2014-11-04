@@ -58,7 +58,7 @@ public class LauncherSettings {
     }
 
 
-    static final class Favourites implements BaseLauncherColumns{
+    static final class Favorites implements BaseLauncherColumns{
 
         static final Uri CONTENT_URI = Uri.parse("content://" + LauncherProvider.AUTHORITY
                 + "/" + LauncherProvider.TABLE_FAVOURITES

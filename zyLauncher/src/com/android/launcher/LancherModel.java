@@ -2,18 +2,23 @@ package com.android.launcher;
 
 import android.appwidget.AppWidgetManager;
 import android.content.*;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.*;
 import android.os.Process;
 import android.text.TextUtils;
 import android.util.Log;
 
 import java.lang.ref.WeakReference;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LancherModel extends BroadcastReceiver {
     private static  String TAG = "zy.LancherModel";
@@ -26,6 +31,17 @@ public class LancherModel extends BroadcastReceiver {
     private final AllAppsList mBgAllAppsList;
     private Bitmap mDefaultIcon;
 
+    static final ArrayList<ItemInfo> sBgWorkspaceItems = new ArrayList<ItemInfo>();
+//    static final ArrayList<LauncherAppWidgetInfo> sBgAppWidgets = new ArrayList<LauncherAppWidgetInfo>();
+    static final HashMap<Long, FolderInfo> sBgFolders = new HashMap<Long, FolderInfo>();
+    // sBgItemsIdMap maps *all* the ItemInfos (shortcuts, folders, and widgets) created by
+    // LauncherModel to their ids
+    static final HashMap<Long, ItemInfo> sBgItemsIdMap = new HashMap<Long, ItemInfo>();
+    // sBgDbIconCache is the set of ItemInfos that need to have their icons updated in the database
+    static final HashMap<Object, byte[]> sBgDbIconCache = new HashMap<Object, byte[]>();
+    // sBgWorkspaceScreens is the ordered set of workspace screens.
+    static final ArrayList<Long> sBgWorkspaceScreens = new ArrayList<Long>();
+
     private static final HandlerThread sWorkerThread = new HandlerThread("lancher-loader");
     static {
         sWorkerThread.start();
@@ -37,6 +53,7 @@ public class LancherModel extends BroadcastReceiver {
 
     private boolean mAllAppsLoaded;
     private boolean mWorkspaceLoaded;
+    static final Object sBglock = new Object();
 
     /**
      * the thread used to load the contents of the launcher
@@ -116,8 +133,96 @@ public class LancherModel extends BroadcastReceiver {
 
             LauncherAppState.getLauncherProvider().loadDefaultFavoritesIfNecessary(0);
 
+            // Check if we need to do any upgrade-path logic
+            //boolean loadedOldDb = LauncherAppState.getLauncherProvider().justLoadedOldDb();
+
+            synchronized (sBglock){
+                clearSBgDataStructures();
+
+                final ArrayList<Long> itemsToRemove = new ArrayList<Long>();
+                final Uri contentUri = LauncherSettings.Favorites.CONTENT_URI;
+                final Cursor c = contentResolver.query(contentUri, null, null ,null, null);
+
+                final HashMap<Long, ItemInfo[][]> occupied = new HashMap<Long, ItemInfo[][]>();
+                try {
+                    final int idIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites._ID);
+                    final int intentIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.INTENT);
+                    final int titleIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.TITLE);
+                    final int iconTypeIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.ICON_TYPE);
+                    final int iconIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.ICON);
+                    final int iconPackageIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.ICON_PACKAGE);
+                    final int iconResourceIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.ICON_RESOURCE);
+                    final int containerIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.CONTAINER);
+                    final int itemTypeIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.ITEM_TYPE);
+                    final int appWidgetIdIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.APPWIDGET_ID);
+                    final int appWidgetProviderIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.APPWIDGET_PROVIDER);
+                    final int screenIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.SCREEN);
+                    final int cellXIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.CELLX);
+                    final int cellYIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.CELLY);
+                    final int spanXIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.SPANX);
+                    final int spanYIndex = c.getColumnIndexOrThrow(LauncherSettings.Favorites.SPANY);
+
+                    ShortcutInfo info;
+                    String intentDescription;
+                    LauncherAppWidgetInfo appWidgetInfo;
+                    int container;
+                    long id;
+                    Intent intent;
+
+                    while (!mStopped && c.moveToNext()){
+                        AtomicBoolean deleteOnItemOverlap = new AtomicBoolean(false);
+
+                        int itemType = c.getInt(itemTypeIndex);
+                        switch (itemType){
+                            case LauncherSettings.Favorites.ITEM_TYPE_APPLICATION:
+                            case LauncherSettings.Favorites.ITEM_TYPE_SHORTCUT:
+                                id = c.getLong(idIndex);
+                                intentDescription = c.getString(intentIndex);
+                                try {
+                                    intent = Intent.parseUri(intentDescription, 0);
+                                    ComponentName cn = intent.getComponent();
+                                    if (cn != null && !isValidPackageComponent(packageManager, cn)){
+
+                                    }
+                                    //TBD
+                                } catch (URISyntaxException e) {
+                                    e.printStackTrace();
+                                    continue;
+                                }
+
+
+                        }
+                    }
+
+                }finally {
+                    if (c != null)
+                        c.close();
+                }
+
+                //TBD
+            }
 
             //TBD
+        }
+
+        private boolean isValidPackageComponent(PackageManager packageManager, ComponentName componentName) {
+            if (cn==null){
+                return false;
+            }
+
+            PackageInfo packageInfo = packageManager.getPackageInfo(componentName, 0)
+
+        }
+
+        private void clearSBgDataStructures() {
+            synchronized (sBglock){
+                sBgWorkspaceItems.clear();
+//                sBgAppWidgets.clear();
+                sBgFolders.clear();
+                sBgItemsIdMap.clear();
+                sBgDbIconCache.clear();
+                sBgWorkspaceScreens.clear();
+            }
         }
 
         public boolean isLaunching() {
