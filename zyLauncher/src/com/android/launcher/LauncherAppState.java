@@ -26,6 +26,7 @@ public class LauncherAppState {
     private final LancherModel mModel;
     private float mScreenDensity;
     private IconCache mIconCache;
+    private DynamicGrid mDynamicGrid;
 
 
     public static void setApplicationContext(Context mContext) {
@@ -106,5 +107,9 @@ public class LauncherAppState {
 
     public static void setLauncherProvider(LauncherProvider launcherProvider) {
         sLauncherProvider = new WeakReference<LauncherProvider>(launcherProvider);
+    }
+
+    public DynamicGrid getDynamicGrid() {
+        return mDynamicGrid;
     }
 }

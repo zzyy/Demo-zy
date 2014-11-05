@@ -55,6 +55,30 @@ public class LancherModel extends BroadcastReceiver {
     private boolean mWorkspaceLoaded;
     static final Object sBglock = new Object();
 
+    public static void checkItemInfo(ItemInfo itemInfo) {
+        final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        final long itemId = itemInfo.id;
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (sBglock){
+                    checkItemInfoLocked(itemId, item, stackTrace);
+                }
+            }
+        };
+
+        runOnWorkerThread(r);
+    }
+
+    private static void runOnWorkerThread(Runnable r) {
+        if (sWorkerThread.getThreadId() == Process.myTid()) {
+            r.run();
+        } else {
+            // If we are not on the worker thread, then post to the worker handler
+            sWorker.post(r);
+        }
+    }
+
     /**
      * the thread used to load the contents of the launcher
      *   -workspace icon
@@ -182,14 +206,92 @@ public class LancherModel extends BroadcastReceiver {
                                     intent = Intent.parseUri(intentDescription, 0);
                                     ComponentName cn = intent.getComponent();
                                     if (cn != null && !isValidPackageComponent(packageManager, cn)){
-
+                                        if (!mAppsCanBeOnRemoveableStorage){
+                                            //invalid package, remove it from db
+                                            itemsToRemove.add(id);
+                                        }else {
+                                            //if apps can be on external storage, leave them for the user to remove.
+                                        }
                                     }
-                                    //TBD
                                 } catch (URISyntaxException e) {
                                     e.printStackTrace();
                                     continue;
                                 }
 
+                                if (itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION){
+                                    info = getShortcutInfo(packageManager, intent, context, c, iconIndex, titleIndex, mLabelCache);
+                                }else {
+                                    info = getShortcutInfo(c, context, iconTypeIndex, iconPackageIndex, iconResourceIndex, iconIndex, titleIndex);
+
+                                    if (intent.getAction() != null && intent.getCategories() != null
+                                            && intent.getAction().equals(Intent.ACTION_MAIN) && intent.getCategories().contains(Intent.CATEGORY_LAUNCHER)){
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                                    }
+                                }
+
+                                if (info != null){
+                                    info.id = id;
+                                    info.intent = intent;
+                                    container = c.getInt(containerIndex);
+                                    info.container = container;
+                                    info.screenId = c.getInt(screenIndex);
+                                    info.cellX = c.getInt(cellXIndex);
+                                    info.cellY = c.getInt(cellYIndex);
+                                    info.spanX = 1;
+                                    info.spanY = 1;
+
+                                    if (container == LauncherSettings.Favorites.CONTAINER_DESKTOP){
+                                        if (checkItemDimensions(info)){
+                                            Log.d(TAG, "skipped load out of bound shortcut " + info);
+                                            continue;
+                                        }
+                                    }
+
+                                    deleteOnItemOverlap.set(false);
+                                    if (!checkItemPlacement(occupied, info, deleteOnItemOverlap)){
+                                        if (deleteOnItemOverlap.get()){
+                                            itemsToRemove.add(id);
+                                        }
+                                        break;
+                                    }
+
+                                    switch (container){
+                                        case LauncherSettings.Favorites.CONTAINER_DESKTOP:
+                                        case LauncherSettings.Favorites.CONTAINER_HOTSEAT:
+                                            sBgWorkspaceItems.add(info);
+                                            break;
+                                        default:
+                                            // Item is in a user folder
+                                            FolderInfo folderInfo =
+                                                    findOrMakeFolder(sBgFolders, container);
+                                            folderInfo.add(info);
+                                            break
+                                    }
+
+                                    sBgItemsIdMap.put(info.id, info);
+                                    queueIconToBeChecked(sBgDbIconCache, info, c, iconIndex);
+                                }else {
+                                    throw new RuntimeException("Unexpected null ShortcutInfo");
+                                }
+                                break;
+
+                            case LauncherSettings.Favorites.ITEM_TYPE_FOLDER:
+                                id = c.getLong(idIndex);
+                                FolderInfo folderInfo = findOrMakeFolder(sBgFolders, id);
+
+                                folderInfo.title = c.getString(titleIndex);
+                                folderInfo.id = id;
+                                container = c.getInt(containerIndex);
+                                folderInfo.container = container;
+                                folderInfo.screenId = c.getInt(screenIndex);
+                                folderInfo.cellX = c.getInt(cellXIndex);
+                                folderInfo.cellY = c.getInt(cellYIndex);
+                                folderInfo.spanX = 1;
+                                folderInfo.spanY = 1;
+
+
+                                //TBD
+                            case LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET:
 
                         }
                     }
@@ -199,14 +301,90 @@ public class LancherModel extends BroadcastReceiver {
                         c.close();
                 }
 
+                // Break early if we've stopped loading
+                if (mStopped) {
+                    clearSBgDataStructures();
+                    return false;
+                }
+
                 //TBD
             }
 
             //TBD
         }
 
+        private boolean checkItemPlacement(HashMap<Long, ItemInfo[][]> occupied, ShortcutInfo item, AtomicBoolean deleteOnItemOverlap) {
+            LauncherAppState app = LauncherAppState.getInstance();
+            DeviceProfile grid = app.getDynamicGrid().getDeviceProfile();
+            int countX = (int) grid.numColumns;
+            int countY = (int) grid.numRows;
+
+            long containerIndex = item.screenId;
+            if (item.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT){
+                if (mCallbacks == null || mCallbacks.get().isAllAppsButtonRank((int)item.screenId)){
+                    deleteOnItemOverlap.set(true);
+                    return false;
+                }
+
+                if (occupied.containsKey(LauncherSettings.Favorites.CONTAINER_HOTSEAT)) {
+                    if (occupied.get(LauncherSettings.Favorites.CONTAINER_HOTSEAT)[((int) item.screenId)][0] != null) {
+                        Log.e(TAG, "Error loading shortcut into hotseat " + item
+                                + " into position (" + item.screenId + ":" + item.cellX + ","
+                                + item.cellY + ") occupied by "
+                                + occupied.get(LauncherSettings.Favorites.CONTAINER_HOTSEAT)
+                                [(int) item.screenId][0]);
+                        return false;
+                    }
+                } else {
+                    ItemInfo[][] items = new ItemInfo[countX + 1][countY + 1];
+                    items[((int) item.screenId)][0] = item;
+                    occupied.put((long) LauncherSettings.Favorites.CONTAINER_HOTSEAT, items);
+                    return true;
+                }
+            }else if (item.container != LauncherSettings.Favorites.CONTAINER_DESKTOP){
+                // Skip further checking if it is not the hotseat or workspace container
+                return true;
+            }
+
+            if (occupied.containsKey(item.screenId)){
+                ItemInfo[][] items = new ItemInfo[countX + 1][countY + 1];
+                occupied.put(item.screenId, items);
+            }
+
+            //each screen
+            ItemInfo[][] screens = occupied.get(item.screenId);
+            // Check if any workspace icons overlap with each other
+            for (int x=item.cellX; x<(item.cellX + item.spanX); x++){
+                for (int y=item.cellY; y<(item.cellY+item.spanY); y++){
+                    if (item[x][y] != null){
+                        Log.e(TAG, "Error loading shortcut " + item
+                                + " into cell (" + containerIndex + "-" + item.screenId + ":"
+                                + x + "," + y
+                                + ") occupied by "
+                                + screens[x][y]);
+                        return false;
+                    }
+                }
+            }
+
+            for (int x = item.cellX; x < (item.cellX+item.spanX); x++) {
+                for (int y = item.cellY; y < (item.cellY+item.spanY); y++) {
+                    screens[x][y] = item;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean checkItemDimensions(ShortcutInfo info) {
+            LauncherAppState app = LauncherAppState.getInstance();
+            DeviceProfile grid = app.getDynamicGrid().getDeviceProfile();
+            return (info.cellX + info.spanX) > (int) grid.numColumns ||
+                    (info.cellY + info.spanY) > (int) grid.numRows;
+        }
+
         private boolean isValidPackageComponent(PackageManager packageManager, ComponentName componentName) {
-            if (cn==null){
+            if (componentName==null){
                 return false;
             }
 
@@ -219,7 +397,7 @@ public class LancherModel extends BroadcastReceiver {
                 return packageManager.getActivityInfo(componentName, 0) != null;
 
             } catch (PackageManager.NameNotFoundException e) {
-                return false
+                return false;
             }
 
         }
@@ -243,9 +421,25 @@ public class LancherModel extends BroadcastReceiver {
         }
     }
 
+    private FolderInfo findOrMakeFolder(HashMap<Long, FolderInfo> folders, long id) {
+        //TBD create folderInfo
+        return null;
+    }
+
+    private ShortcutInfo getShortcutInfo(Cursor c, Context context, int iconTypeIndex, int iconPackageIndex, int iconResourceIndex, int iconIndex, int titleIndex) {
+        //TBD
+        return null;
+    }
+
+    private ShortcutInfo getShortcutInfo(PackageManager packageManager, Intent intent, Context context, Cursor c, int iconIndex, int titleIndex, HashMap<Objects, CharSequence> labelCache) {
+        //TBD
+        return null;
+    }
+
     private WeakReference<Callbacks> mCallbacks;
 
     public interface Callbacks{
+        boolean isAllAppsButtonRank(int rank);
         //TBD
 
     }
