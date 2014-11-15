@@ -1,6 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- From: file:/F:/AndroidstudioProjects/Demo_zy/zyLauncher/res/values/config.xml -->
+    <eat-comment />
+
+    <bool name="hotseat_transpose_layout_with_orientation">true</bool>
+    <!-- From: file:/F:/AndroidstudioProjects/Demo_zy/zyLauncher/res/values/attrs.xml -->
+    <eat-comment />
+
+    <declare-styleable name="Favorite">
+        <attr name="className" format="string" />
+        <attr name="packageName" format="string" />
+        <attr name="container" format="string" />
+        <attr name="screen" format="string" />
+        <attr name="x" format="string" />
+        <attr name="y" format="string" />
+        <attr name="spanX" format="string" />
+        <attr name="spanY" format="string" />
+        <attr name="icon" format="reference" />
+        <attr name="title" format="reference" />
+        <attr name="uri" format="string" />
+    </declare-styleable>
+    <declare-styleable name="Include">
+        <attr name="workspace" format="reference" />
+    </declare-styleable>
+    <!-- From: file:/F:/AndroidstudioProjects/Demo_zy/zyLauncher/res/values/attrs_workspace.xml -->
+    <eat-comment />
+
+    <declare-styleable name="Workspace">
+        <attr name="exampleString" format="string" />
+        <attr name="exampleDimension" format="dimension" />
+        <attr name="exampleColor" format="color" />
+        <attr name="exampleDrawable" format="color|reference" />
+    </declare-styleable>
     <!-- From: file:/F:/AndroidstudioProjects/Demo_zy/zyLauncher/res/values/dimens.xml -->
     <eat-comment />
 
@@ -12,7 +44,9 @@
     <string name="action_settings">Settings</string>
     <string name="app_filter_class"></string>
     <string name="app_name">zyLauncher</string>
+    <string name="folder_name"></string>
     <string name="hello_world">Hello world!</string>
+    <string name="title_activity_launcher">Launcher</string>
     <!-- From: file:/F:/AndroidstudioProjects/Demo_zy/zyLauncher/res/values/styles.xml -->
     <eat-comment />
 

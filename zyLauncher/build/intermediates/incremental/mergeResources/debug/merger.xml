@@ -24,11 +24,6 @@
                 qualifiers="xxhdpi-v4"
                 type="drawable" />
             <file
-                name="activity_main"
-                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\layout\activity_main.xml"
-                qualifiers=""
-                type="layout" />
-            <file
                 name="main"
                 path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\menu\main.xml"
                 qualifiers=""
@@ -48,8 +43,11 @@
                 </string>
                 <string name="app_name" >zyLauncher
                 </string>
+                <string name="folder_name" ></string>
                 <string name="app_filter_class" ></string>
                 <string name="hello_world" >Hello world!
+                </string>
+                <string name="title_activity_launcher" >Launcher
                 </string>
             </file>
             <file
@@ -101,6 +99,100 @@
                 qualifiers="w820dp-v13" >
                 <dimen name="activity_horizontal_margin" >64dp
                 </dimen>
+            </file>
+            <file
+                name="hotseat"
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\layout\hotseat.xml"
+                qualifiers=""
+                type="layout" />
+            <file
+                name="workspace_bg"
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\drawable\workspace_bg.xml"
+                qualifiers=""
+                type="drawable" />
+            <file
+                name="default_workspace"
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\xml\default_workspace.xml"
+                qualifiers=""
+                type="xml" />
+            <file
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\attrs_workspace.xml"
+                qualifiers="" >
+                <declare-styleable name="Workspace" >
+                    <attr
+                        name="exampleString"
+                        format="string" />
+                    <attr
+                        name="exampleDimension"
+                        format="dimension" />
+                    <attr
+                        name="exampleColor"
+                        format="color" />
+                    <attr
+                        name="exampleDrawable"
+                        format="color|reference" />
+                </declare-styleable>
+            </file>
+            <file
+                name="launcher"
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\menu\launcher.xml"
+                qualifiers=""
+                type="menu" />
+            <file
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\attrs.xml"
+                qualifiers="" >
+                <declare-styleable name="Favorite" >
+                    <attr
+                        name="className"
+                        format="string" />
+                    <attr
+                        name="packageName"
+                        format="string" />
+                    <attr
+                        name="container"
+                        format="string" />
+                    <attr
+                        name="screen"
+                        format="string" />
+                    <attr
+                        name="x"
+                        format="string" />
+                    <attr
+                        name="y"
+                        format="string" />
+                    <attr
+                        name="spanX"
+                        format="string" />
+                    <attr
+                        name="spanY"
+                        format="string" />
+                    <attr
+                        name="icon"
+                        format="reference" />
+                    <attr
+                        name="title"
+                        format="reference" />
+                    <attr
+                        name="uri"
+                        format="string" />
+                </declare-styleable>
+                <declare-styleable name="Include" >
+                    <attr
+                        name="workspace"
+                        format="reference" />
+                </declare-styleable>
+            </file>
+            <file
+                name="launcher"
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\layout-port\launcher.xml"
+                qualifiers="port"
+                type="layout" />
+            <file
+                path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\res\values\config.xml"
+                qualifiers="" >
+                <bool name="hotseat_transpose_layout_with_orientation" >
+true
+                </bool>
             </file>
         </source>
         <source path="F:\AndroidstudioProjects\Demo_zy\zyLauncher\build\generated\res\rs\debug" />

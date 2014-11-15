@@ -5,6 +5,8 @@
       <module fileurl="file://$PROJECT_DIR$/Demo-zy.iml" filepath="$PROJECT_DIR$/Demo-zy.iml" />
       <module fileurl="file://$PROJECT_DIR$/Demo_zy.iml" filepath="$PROJECT_DIR$/Demo_zy.iml" />
       <module fileurl="file://$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" filepath="$PROJECT_DIR$/DrapAndDrop/DrapAndDrop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/DrawFlow/DrawFlow.iml" filepath="$PROJECT_DIR$/DrawFlow/DrawFlow.iml" />
+      <module fileurl="file://Z:/test/kitkat/mydroid/packages/apps/Launcher3/LauncherDemo.iml" filepath="Z:/test/kitkat/mydroid/packages/apps/Launcher3/LauncherDemo.iml" />
       <module fileurl="file://$PROJECT_DIR$/zyLauncher/zyLauncher.iml" filepath="$PROJECT_DIR$/zyLauncher/zyLauncher.iml" />
       <module fileurl="file://F:/workspace2/zyLauncher/zyLauncher.iml" filepath="F:/workspace2/zyLauncher/zyLauncher.iml" />
     </modules>

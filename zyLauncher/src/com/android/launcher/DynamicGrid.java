@@ -22,4 +22,12 @@ class DeviceProfile {
     float numRows;
     float numColumns;
 
+    int hotseatAllAppsRank;
+
+    int calculateCellWidth(int width, int countX) {
+        return width / countX;
+    }
+    int calculateCellHeight(int height, int countY) {
+        return height / countY;
+    }
 }
